@@ -1,0 +1,29 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+      - run: flutter pub get
+      # Generate native Android scaffolding in a temporary project so the user's
+      # lib/ and pubspec.yaml are preserved, then copy only the Android folder.
+      - run: flutter create --project-name simulator_veritatis --org com.simulatorveritatis --platforms android /tmp/sv_android_template
+      - run: rm -rf android && cp -R /tmp/sv_android_template/android android
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulator-veritatis-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
