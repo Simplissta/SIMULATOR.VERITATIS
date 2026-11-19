@@ -36,12 +36,98 @@ class _AppState extends State<SimulatorVeritatisApp> {
   Future<void> _save() async {final p=await SharedPreferences.getInstance(); await p.setString('cast',jsonEncode(contestants.map((c)=>c.toJson()).toList())); await p.setStringList('feed',feed);}
   Future<void> _edit([Contestant? c]) async {final result=await Navigator.push<Contestant>(context,MaterialPageRoute(builder:(_)=>ContestantEditor(contestant:c))); if(result!=null){setState(() {final i=contestants.indexWhere((x)=>x.id==result.id); if(i<0)contestants.add(result); else contestants[i]=result;}); await _save();}}
   String _event(){if(contestants.length<2)return 'Adicione pelo menos dois participantes para gerar acontecimentos.'; final r=Random(); final a=contestants[r.nextInt(contestants.length)], b=contestants.where((x)=>x.id!=a.id).toList()[r.nextInt(contestants.length-1)]; final themes=['uma conversa inesperada','uma discordância sobre as tarefas','um comentário que foi interpretado de forma diferente','uma aproximação durante o tempo livre','um mal-entendido','uma disputa por espaço ou atenção','uma troca de confidências','uma brincadeira que não caiu bem','um pequeno gesto de solidariedade','uma tensão que ninguém verbalizou']; final theme=themes[r.nextInt(themes.length)]; final mood=(a.attributes['Impulsividade']??50)+(b.attributes['Sensibilidade emocional']??50); final endings=['A conversa terminou sem grandes consequências, mas ambos ficaram com uma impressão diferente um do outro.','O momento passou, embora um dos dois tenha guardado aquilo para si.','Outros participantes perceberam a interação e podem interpretá-la de maneiras diferentes.','A situação não virou conflito; os dois mudaram de assunto e seguiram a rotina.']; return 'Durante o período de convivência, ${a.name} e ${b.name} tiveram $theme. ${a.name} ${mood>115?'reagiu de maneira mais intensa e ':mood<85?'manteve uma postura tranquila e ':''}a interação se desenvolveu de forma espontânea. ${endings[r.nextInt(endings.length)]}';}
-  Future<void> _advance(){final event=_event();setState(()=>feed.insert(0,'${DateTime.now().toLocal().toString().substring(0,16)}\n$event'));_save();}
+  void _advance(){final event=_event();setState(()=>feed.insert(0,'${DateTime.now().toLocal().toString().substring(0,16)}\n$event'));_save();}
   Color _hex(String s,Color fallback){try{return Color(int.parse(s.replaceAll('#',''),radix:16)|0xff000000);}catch(_){return fallback;}}
   void _settings(){Navigator.push(context,MaterialPageRoute(builder:(_)=>SettingsScreen(accent:accent,textColor:textColor,bg:bg,alignment:alignment,wallpaper:wallpaper,onApply:(a,t,b,al,w){setState((){accent=a;textColor=t;bg=b;alignment=al;wallpaper=w;});},onClear:()async{final p=await SharedPreferences.getInstance();await p.clear();setState((){contestants.clear();feed.clear();});})));}
   @override Widget build(BuildContext context){return MaterialApp(title:'Simulator Veritatis',theme:ThemeData.dark().copyWith(scaffoldBackgroundColor:bg, colorScheme:ColorScheme.dark(primary:accent,secondary:accent), textTheme:ThemeData.dark().textTheme.apply(bodyColor:textColor,displayColor:textColor)),home:Scaffold(appBar:AppBar(title:const Text('SIMULATOR VERITATIS',style:TextStyle(fontSize:16,letterSpacing:2,fontWeight:FontWeight.w700)),actions:[IconButton(onPressed:_settings,icon:const Icon(Icons.settings_outlined))]),body:SafeArea(child: selectedTab==0?_cast():_feed()),bottomNavigationBar:NavigationBar(backgroundColor:bg,selectedIndex:selectedTab,onDestinationSelected:(i)=>setState(()=>selectedTab=i),destinations:const [NavigationDestination(icon:Icon(Icons.people_outline),label:'Elenco'),NavigationDestination(icon:Icon(Icons.auto_stories_outlined),label:'Narrativa')])));}
-  Widget _cast()=>Column(children:[Padding(padding:const EdgeInsets.all(16),child:Row(children:[Expanded(child:Text('${contestants.length} participantes',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold))),FilledButton.icon(onPressed:()=>_edit(),icon:const Icon(Icons.add),label:const Text('Criar'))])),Expanded(child:contestants.isEmpty?Center(child:Padding(padding:const EdgeInsets.all(28),child:Text('Seu reality começa com pessoas.\n\nCrie participantes com atributos, talentos, objetivos e personalidade.',textAlign:alignment,style:const TextStyle(fontSize:16)))):ListView.builder(padding:const EdgeInsets.all(12),itemCount:contestants.length,itemBuilder:(context,i){final c=contestants[i];return Card(child:ListTile(leading:CircleAvatar(backgroundImage:c.photoPath.isNotEmpty&&File(c.photoPath).existsSync()?FileImage(File(c.photoPath)):null,child:c.photoPath.isEmpty?const Icon(Icons.person):null),title:Text(c.name),subtitle:Text(c.talent.isEmpty?'Sem talento excepcional definido':c.talent,maxLines:1,overflow:TextOverflow.ellipsis),onTap:()=>_edit(c),trailing:IconButton(icon:const Icon(Icons.delete_outline),onPressed:(){setState(()=>contestants.removeAt(i));_save();})));}),Padding(padding:const EdgeInsets.fromLTRB(16,8,16,16),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:contestants.length<2?null:_advance,icon:const Icon(Icons.play_arrow),label:const Text('GERAR ACONTECIMENTO'))))]);
-  Widget _feed()=>feed.isEmpty?Center(child:Padding(padding:const EdgeInsets.all(24),child:Text('Nenhum acontecimento ainda.\nCrie seu elenco e comece a simulação.',textAlign:alignment)) :ListView.builder(padding:const EdgeInsets.all(16),itemCount:feed.length,itemBuilder:(c,i)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:Text(feed[i],textAlign:alignment,style:const TextStyle(height:1.55)))));
+  Widget _cast() => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(child: Text('${contestants.length} participantes', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+            FilledButton.icon(onPressed: () => _edit(), icon: const Icon(Icons.add), label: const Text('Criar')),
+          ],
+        ),
+      ),
+      Expanded(
+        child: contestants.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Text(
+                    'Seu reality começa com pessoas.\n\nCrie participantes com atributos, talentos, objetivos e personalidade.',
+                    textAlign: alignment,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: contestants.length,
+                itemBuilder: (context, i) {
+                  final c = contestants[i];
+                  final hasPhoto = c.photoPath.isNotEmpty && File(c.photoPath).existsSync();
+                  return Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: hasPhoto ? FileImage(File(c.photoPath)) : null,
+                        child: !hasPhoto ? const Icon(Icons.person) : null,
+                      ),
+                      title: Text(c.name),
+                      subtitle: Text(
+                        c.talent.isEmpty ? 'Sem talento excepcional definido' : c.talent,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => _edit(c),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () {
+                          setState(() => contestants.removeAt(i));
+                          _save();
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: contestants.length < 2 ? null : _advance,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('GERAR ACONTECIMENTO'),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _feed() => feed.isEmpty
+      ? Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Nenhum acontecimento ainda.\nCrie seu elenco e comece a simulação.',
+              textAlign: alignment,
+            ),
+          ),
+        )
+      : ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: feed.length,
+          itemBuilder: (context, i) => Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(feed[i], textAlign: alignment, style: const TextStyle(height: 1.55)),
+            ),
+          ),
+        );
 }
 
 class ContestantEditor extends StatefulWidget {final Contestant? contestant;const ContestantEditor({super.key,this.contestant});@override State<ContestantEditor> createState()=>_ContestantEditorState();}
