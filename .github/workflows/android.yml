@@ -29,6 +29,8 @@ jobs:
       # lib/ and pubspec.yaml are preserved, then copy only the Android folder.
       - run: flutter create --project-name simulator_veritatis --org com.simulatorveritatis --platforms android /tmp/sv_android_template
       - run: rm -rf android && cp -R /tmp/sv_android_template/android android
+      # The image_picker lifecycle plugin requires Android SDK 35.
+      - run: sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/; s/compileSdk flutter.compileSdkVersion/compileSdk 35/' android/app/build.gradle
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:
